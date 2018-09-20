@@ -1,0 +1,161 @@
+# Welcome to Serverless!
+#
+# This file is the main config file for your service.
+# It's very minimal at this point and uses default values.
+# You can always add more config options for more control.
+# We've included some commented out config examples here.
+# Just uncomment any of them to get that config option.
+#
+# For full config options, check the docs:
+#    docs.serverless.com
+#
+# Happy Coding!
+
+service: localess # NOTE: update this with your service name
+
+
+plugins:
+  # - serverless-dynamodb-local
+  - serverless-dynamodb-local
+  - serverless-offline-dynamodb-streams
+  - serverless-offline
+
+
+custom:
+  serverless-offline:
+    host: localhost
+    port: 5000
+  dynamodb:
+    start:
+      host: localhost
+      port: 8000
+      inMemory: true
+      migrate: true
+  serverless-offline-dynamodb-streams:
+    endpoint: http://localhost:8000
+    region: eu-west-1
+    accessKeyId: mykey
+    secretAccessKey: mysecret
+  # dynamodbStream:
+  #   host: localhost
+  #   port: 8000
+  #   streams:
+  #     - table: usersTable
+  #       functions:
+  #         - triggerStream
+
+
+provider:
+  name: aws
+  runtime: nodejs8.10
+  region: eu-west-1
+
+
+resources:
+  Resources:
+    usersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: usersTable
+        AttributeDefinitions:
+          - AttributeName: userId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: userId
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        StreamSpecification:
+          StreamViewType: NEW_IMAGE
+
+
+functions:
+  PutItem:
+    handler: handler.PutItem
+  Scan:
+    handler: handler.Scan
+    events:
+      - http:
+          path: scan
+          method: GET
+  triggerStream:
+    handler: handler.triggerStream
+    events:
+      - stream:
+          type: dynamodb
+          batchSize: 1
+          startingPosition: LATEST
+          arn: arn:aws:dynamodb:eu-west-1:XXXXXX:table/usersTable
+      # - stream:
+      #   type: dynamodb
+      #   batchSize: 1
+      #   startingPosition: LATEST
+      #   arn:
+      #     FN::GetAtt:
+      #       - usersTable
+      #       - StreamArn
+
+# REMINDER 
+# https://serverless.com/framework/docs/providers/aws/guide/credentials/
+
+  # provider
+  # environment:
+  # iamRoleStatements:
+  #   - Effect: Allow
+  #     Action:
+  #       - dynamodb:DescribeTable
+  #       - dynamodb:Query
+  #       - dynamodb:Scan
+  #       - dynamodb:GetItem
+  #       - dynamodb:PutItem
+  #       - dynamodb:UpdateItem
+  #       - dynamodb:DeleteItem
+
+  # function
+  # triggerStream:
+  #   handler: handler.triggerStream
+  #   events:
+      # - stream:
+      #     type: dynamodb
+      #     table: usersTable
+      #     batchSize: 1
+      #     startingPosition: LATEST
+      #     arn:
+      #       FN::GetAtt:
+      #         - usersTable
+      #         - StreamArn
+
+  # getUser:
+  #   handler: handler.getUser
+  #   events:
+  #     - http:
+  #         path: users/{userId}
+  #         method: get
+
+### Dynamo SHELL create table with STREAM
+# var params = {
+#     TableName: 'table_name',
+#     KeySchema: [ // The type of of schema.  Must start with a HASH type, with an optional second RANGE.
+#         { // Required HASH type attribute
+#             AttributeName: 'userId',
+#             KeyType: 'HASH',
+#         }
+#     ],
+#     AttributeDefinitions: [ // The names and types of all primary and index key attributes only
+#         {
+#             AttributeName: 'userId',
+#             AttributeType: 'S', // (S | N | B) for string, number, binary
+#         }
+#     ],
+#     ProvisionedThroughput: { // required provisioned throughput for the table
+#         ReadCapacityUnits: 1, 
+#         WriteCapacityUnits: 1, 
+#     },
+#     StreamSpecification: {
+#         StreamViewType: 'NEW_IMAGE',
+#         StreamEnabled: true
+#     }
+# };
+
+
