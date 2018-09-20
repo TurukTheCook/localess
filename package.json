@@ -13,6 +13,7 @@
     "serverless-dynamodb-local": "^0.2.35",
     "serverless-offline": "^3.25.12",
     "serverless-offline-dynamodb-streams": "^1.2.0",
+    "serverless-plugin-offline-dynamodb-stream": "^1.0.14",
     "uuid": "^3.3.2"
   }
 }

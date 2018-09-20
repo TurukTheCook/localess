@@ -15,9 +15,9 @@ service: localess # NOTE: update this with your service name
 
 
 plugins:
-  # - serverless-dynamodb-local
   - serverless-dynamodb-local
-  - serverless-offline-dynamodb-streams
+  # - serverless-offline-dynamodb-streams
+  - serverless-plugin-offline-dynamodb-stream
   - serverless-offline
 
 
@@ -31,24 +31,26 @@ custom:
       port: 8000
       inMemory: true
       migrate: true
-  serverless-offline-dynamodb-streams:
-    endpoint: http://localhost:8000
-    region: eu-west-1
-    accessKeyId: mykey
-    secretAccessKey: mysecret
-  # dynamodbStream:
-  #   host: localhost
-  #   port: 8000
-  #   streams:
-  #     - table: usersTable
-  #       functions:
-  #         - triggerStream
+  # serverless-offline-dynamodb-streams:
+  #   endpoint: http://localhost:8000
+  #   region: eu-west-1
+  #   accessKeyId: mykey
+  #   secretAccessKey: mysecret
+  dynamodbStream:
+    host: localhost
+    port: 8000
+    streams:
+      - table: usersTable
+        functions:
+          - triggerStream
 
 
 provider:
   name: aws
   runtime: nodejs8.10
-  region: eu-west-1
+  # region: eu-west-1
+  environment:
+    region: localhost
 
 
 resources:
@@ -75,29 +77,20 @@ functions:
     handler: handler.PutItem
   Scan:
     handler: handler.Scan
-    events:
-      - http:
-          path: scan
-          method: GET
   triggerStream:
     handler: handler.triggerStream
-    events:
-      - stream:
-          type: dynamodb
-          batchSize: 1
-          startingPosition: LATEST
-          arn: arn:aws:dynamodb:eu-west-1:XXXXXX:table/usersTable
-      # - stream:
-      #   type: dynamodb
-      #   batchSize: 1
-      #   startingPosition: LATEST
-      #   arn:
-      #     FN::GetAtt:
-      #       - usersTable
-      #       - StreamArn
+    # events:
+    #   - stream:
+    #       type: dynamodb
+    #       batchSize: 1
+    #       startingPosition: LATEST
+    #       arn: arn:aws:dynamodb:eu-west-1:mykey:table/usersTable
 
+
+##########
 # REMINDER 
 # https://serverless.com/framework/docs/providers/aws/guide/credentials/
+##########
 
   # provider
   # environment:
