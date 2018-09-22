@@ -1,0 +1,3 @@
+[console_scripts]
+cloudsearch-admin = nozama.cloudsearch.client.admintool:main
+
