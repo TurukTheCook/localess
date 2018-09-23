@@ -12,6 +12,10 @@ const cs = new AWS.CloudSearchDomain({
 });
 const TABLE_NAME = "usersTable";
 
+/**
+ * DYNAMODB FUNCTIONS
+ */
+
 module.exports.PutItem = (event, context, callback) => {
     let params = {
       TableName: TABLE_NAME,
@@ -43,7 +47,7 @@ module.exports.DeleteItem = (event, context, callback) => {
   let params = {
     TableName: TABLE_NAME,
     Key: {
-      userId: event.userId
+      userId: event
     }
   };
 
@@ -51,7 +55,7 @@ module.exports.DeleteItem = (event, context, callback) => {
     .then(result => {
       let response = {
         statusCode: 200,
-        message: 'User with id: ' + params.Key + ' deleted successfully'
+        message: 'User with id: ' + params.Key.userId + ' deleted successfully'
       };
       callback(null, response);
     })
@@ -78,6 +82,10 @@ module.exports.Scan = (event, context, callback) => {
     });
 };
 
+/**
+ * DYNAMODB-STREAMS AND CLOUDSEARCH
+ */
+ 
 module.exports.triggerStream = (event, context, callback) => {
   console.log('DDB Stream Triggered..')
   let record = event.Records[0];
@@ -110,3 +118,20 @@ module.exports.triggerStream = (event, context, callback) => {
   });
 };
 
+module.exports.Search = (event, context, callback) => {
+  let params = {
+    query: event
+  };
+
+  cs.search(params).promise()
+    .then(result => {
+      callback(null, result);
+    })
+    .catch(error => {
+      console.error(error);
+      callback(null, {
+        statusCode: error.statusCode || 501,
+        message: 'Could not search'
+      });
+    });
+}

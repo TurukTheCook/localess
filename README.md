@@ -30,8 +30,8 @@ sls offline start
 # To add one test user with unique ID and name 'John', lastname 'Doe'
 sls invoke local -f PutItem -p './user.json'
 
-# To delete the user you can copy his userId and paste  it to   delete.json then run:
-sls invoke local -f DeleteItem -p './delete.json'
+# To delete the user you can copy his userId and paste it as data:
+sls invoke local -f DeleteItem -d '9522c7c0-bf7a-11e8-a361-c75968a5992c'
 
 # To scan the DDB table
 sls invoke local -f Scan

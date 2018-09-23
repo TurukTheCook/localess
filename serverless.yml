@@ -74,6 +74,8 @@ functions:
     handler: handler.Scan
   triggerStream:
     handler: handler.triggerStream
+  Search:
+    handler: handler.Search
 
 
 
