@@ -7,7 +7,7 @@ You'll also need python virtualenv
 ## Environment setup
 
 ```bash
-## Setup everything in the directory before launching
+# Setup everything in the directory before launching
 npm run init
 source nozama/bin/activate
 npm run setup
@@ -16,10 +16,10 @@ npm run setup
 > "init": "npm install && virtualenv nozama"
 > "setup": "pip install nozama-cloudsearch-service && pip install pymongo==2.7.2"
 
-## In the virtualenv
+# In the virtualenv
 pserve development.ini
 
-## In another terminal
+# In another terminal
 export AWS_REGION=localhost
 sls offline start
 ```
@@ -27,15 +27,23 @@ sls offline start
 ##  Instructions
 
 ```bash
-## To add one test user with unique ID and name 'John', lastname 'Doe'
+# To add one test user with unique ID and name 'John', lastname 'Doe'
 sls invoke local -f PutItem -p './user.json'
 
-## To delete the user you can copy his userId and paste  it to   delete.json then run:
+# To delete the user you can copy his userId and paste  it to   delete.json then run:
 sls invoke local -f DeleteItem -p './delete.json'
 
-## To scan the DDB table
+# To scan the DDB table
 sls invoke local -f Scan
 
-## To verify the mongodb collections:
-> use robo3t or mongo shell
+# Try searching for the document:
+curl -H "Content-Type: application/json" http://localhost:15808/2013-01-01/search?q=john
+curl -H "Content-Type: application/json" http://localhost:15808/2013-01-01/search?q=somethingnotpresent
+
+# Check what documents are present / removed:
+curl -H "Content-Type: application/json" http://localhost:15808/dev/documents
+> use robo3t or mongo shell to check directly the mongodb
+
+# Empty out all stored content:
+curl -X DELETE -H "Content-Type: application/json" http://localhost:15808/dev/documents
 ```
