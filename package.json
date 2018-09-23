@@ -5,7 +5,8 @@
   "main": "handler.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "setup": "npm install && virtualenv nozama && source nozama/bin/activate && pip install nozama-cloudsearch-service && pip install pymongo==2.7.2"
+    "init": "npm install && virtualenv nozama",
+    "setup": "pip install nozama-cloudsearch-service && pip install pymongo==2.7.2"
   },
   "author": "",
   "license": "ISC",
