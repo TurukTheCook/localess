@@ -78,8 +78,8 @@ functions:
               - StreamArn
   Search:
     handler: handler.Search
-  PingEs:
-    handler: handler.PingEs
+  # PingEs:
+  #   handler: handler.PingEs
 
 
 # aws es create-elasticsearch-domain --domain-name ddb-streams-es --elasticsearch-version 6.2 --elasticsearch-cluster-config InstanceType=t2.small.elasticsearch,InstanceCount=1 --ebs-options EBSEnabled=true,VolumeType=standard,VolumeSize=10

@@ -129,8 +129,8 @@ module.exports.triggerStream = (event, context, callback) => {
 module.exports.Search = (event, context, callback) => {
   let params = {
     q: event.q,
-    size: event.size,
-    from: event.from,
+    size: event.size || 100,
+    from: event.from || 0,
   };
   es.search(params)
     .then(res => {
