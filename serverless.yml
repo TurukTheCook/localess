@@ -11,37 +11,31 @@
 #
 # Happy Coding!
 
-service: localess # NOTE: update this with your service name
-
-
-plugins:
-  - serverless-dynamodb-local
-  - serverless-plugin-offline-dynamodb-stream
-  - serverless-offline
-
-custom:
-  serverless-offline:
-    host: localhost
-    port: 5000
-  dynamodb:
-    start:
-      host: localhost
-      port: 8000
-      inMemory: true
-      migrate: true
-  dynamodbStream:
-    host: localhost
-    port: 8000
-    streams:
-      - table: usersTable
-        functions:
-          - triggerStream
+service: ddb-streams-es # NOTE: update this with your service name
 
 provider:
   name: aws
   runtime: nodejs8.10
-  environment:
-    region: localhost
+  profile: default
+  region: eu-west-1
+  stage: dev
+  
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:PutItem
+        - dynamodb:DeleteItem
+        - dynamodb:Scan
+        - es:ESHttpGet
+        - es:ESHttpPost
+        - es:ESHttpPut
+        - es:ESHttpDelete
+        - dynamodb:DescribeStream
+        - dynamodb:GetRecords
+        - dynamodb:GetShardIterator
+        - dynamodb:ListStreams
+      Resource:
+        - arn:aws:dynamodb:eu-west-1:468923470896:table/usersTable
 
 resources:
   Resources:
@@ -70,10 +64,18 @@ functions:
     handler: handler.Scan
   triggerStream:
     handler: handler.triggerStream
+    events:
+      - stream:
+          type: dynamodb
+          batchSize: 1
+          startingPosition: LATEST
+          arn: arn:aws:dynamodb:eu-west-1:*:table/usersTable/stream
   Search:
     handler: handler.Search
   PingEs:
     handler: handler.PingEs
 
+
+# aws es create-elasticsearch-domain --domain-name ddb-streams-es --elasticsearch-version 6.2 --elasticsearch-cluster-config InstanceType=t2.small.elasticsearch,InstanceCount=1 --ebs-options EBSEnabled=true,VolumeType=standard,VolumeSize=10
 
 

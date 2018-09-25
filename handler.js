@@ -3,13 +3,9 @@
 const uuid = require('uuid');
 const AWS = require('aws-sdk');
 const elasticsearch = require('elasticsearch');
-const dd = new AWS.DynamoDB.DocumentClient({
-  region: 'localhost',
-  endpoint: 'http://localhost:8000'
-});
+const dd = new AWS.DynamoDB.DocumentClient();
 const es = new elasticsearch.Client({
-  host: 'localhost:4571',
-  // log: 'trace'
+  host: 'https://search-ddb-streams-es-4xrzlieuxfr4xuvrcuvnv7imuq.eu-west-1.es.amazonaws.com'
 });
 const TABLE_NAME = "usersTable";
 
@@ -117,11 +113,10 @@ module.exports.triggerStream = (event, context, callback) => {
 };
 
 module.exports.Search = (event, context, callback) => {
-  let data = JSON.parse(JSON.stringify(event));
   let params = {
-    q: data.q,
-    size: data.size,
-    from: data.from,
+    q: event.q,
+    size: event.size,
+    from: event.from,
   };
   console.log(params);
 
