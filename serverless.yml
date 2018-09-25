@@ -16,7 +16,6 @@ service: ddb-streams-es # NOTE: update this with your service name
 provider:
   name: aws
   runtime: nodejs8.10
-  profile: default
   region: eu-west-1
   stage: dev
   
@@ -26,23 +25,27 @@ provider:
         - dynamodb:PutItem
         - dynamodb:DeleteItem
         - dynamodb:Scan
+        - dynamodb:ListStreams
+        # - dynamodb:DescribeStream
+        # - dynamodb:GetRecords
+        # - dynamodb:GetShardIterator
+      Resource:
+        - "arn:aws:dynamodb:eu-west-1:468923470896:table/UsersTable"
+    - Effect: Allow
+      Action:
         - es:ESHttpGet
         - es:ESHttpPost
         - es:ESHttpPut
         - es:ESHttpDelete
-        - dynamodb:DescribeStream
-        - dynamodb:GetRecords
-        - dynamodb:GetShardIterator
-        - dynamodb:ListStreams
       Resource:
-        - arn:aws:dynamodb:eu-west-1:468923470896:table/usersTable
+        - "arn:aws:es:eu-west-1:468923470896:domain/ddb-streams-es/*"
 
 resources:
   Resources:
-    usersTable:
+    UsersTable:
       Type: AWS::DynamoDB::Table
       Properties:
-        TableName: usersTable
+        TableName: UsersTable
         AttributeDefinitions:
           - AttributeName: userId
             AttributeType: S
@@ -69,7 +72,10 @@ functions:
           type: dynamodb
           batchSize: 1
           startingPosition: LATEST
-          arn: arn:aws:dynamodb:eu-west-1:*:table/usersTable/stream
+          arn:
+            Fn::GetAtt:
+              - UsersTable
+              - StreamArn
   Search:
     handler: handler.Search
   PingEs:

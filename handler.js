@@ -3,11 +3,16 @@
 const uuid = require('uuid');
 const AWS = require('aws-sdk');
 const elasticsearch = require('elasticsearch');
+
 const dd = new AWS.DynamoDB.DocumentClient();
 const es = new elasticsearch.Client({
-  host: 'https://search-ddb-streams-es-4xrzlieuxfr4xuvrcuvnv7imuq.eu-west-1.es.amazonaws.com'
+  host: 'https://search-ddb-streams-es-4xrzlieuxfr4xuvrcuvnv7imuq.eu-west-1.es.amazonaws.com',
+  connectionClass: require('http-aws-es'),
+  amazonES: {
+    credentials: new AWS.EnvironmentCredentials('AWS')
+  }
 });
-const TABLE_NAME = "usersTable";
+const TABLE_NAME = "UsersTable";
 
 /**
  * DYNAMODB FUNCTIONS
@@ -22,7 +27,6 @@ module.exports.PutItem = (event, context, callback) => {
         lastname: event.lastname
       }
     };
-
     dd.put(params).promise()
       .then(result => {
         let response = {
@@ -32,8 +36,11 @@ module.exports.PutItem = (event, context, callback) => {
         callback(null, response);
       })
       .catch(error => {
-        console.error(error);
-        callback(null, "Couldn't add user to ddb..");
+        callback(null, {
+          statusCode: err.statusCode || 500,
+          message: 'Could not add user to ddb..',
+          body: err
+        });
       });
 };
 
@@ -44,7 +51,6 @@ module.exports.DeleteItem = (event, context, callback) => {
       userId: event
     }
   };
-
   dd.delete(params).promise()
     .then(result => {
       let response = {
@@ -54,8 +60,11 @@ module.exports.DeleteItem = (event, context, callback) => {
       callback(null, response);
     })
     .catch(error => {
-      console.log(error);
-      callback(null, "Couldn't delete user from ddb..");
+      callback(null, {
+        statusCode: err.statusCode || 500,
+        message: 'Could not delete user from ddb..',
+        body: err
+      });
     });
 };
 
@@ -65,8 +74,11 @@ module.exports.Scan = (event, context, callback) => {
       callback(null, res);
     })
     .catch(err => {
-      console.error(err);
-      callback(null, "Could'nt scan ddb..");
+      callback(null, {
+        statusCode: err.statusCode || 500,
+        message: 'Could not scan ddb..',
+        body: err
+      });
     });
 };
 
@@ -75,8 +87,6 @@ module.exports.Scan = (event, context, callback) => {
  */
  
 module.exports.triggerStream = (event, context, callback) => {
-  console.log('DDB Stream Triggered..')
-  
   let record = event.Records[0];
   let data = {id : record.dynamodb.Keys.userId.S};
   let image = record.dynamodb.NewImage;
@@ -85,16 +95,17 @@ module.exports.triggerStream = (event, context, callback) => {
     type: 'user',
     id: data.id
   };
-
-  // Delete record deleted from DynamoDB or fill data fields
   if (record.eventName === 'REMOVE') {
     es.delete(params)
       .then(res => {
         callback(null, res);
       })
       .catch(err => {
-        console.error(err);
-        callback(null, 'Could not remove item from ES..');
+        callback(null, {
+          statusCode: err.statusCode || 500,
+          message: 'Could not remove item from ES..',
+          body: err
+        });
       });
   } else {
     params.body = {
@@ -106,8 +117,11 @@ module.exports.triggerStream = (event, context, callback) => {
         callback(null, res);
       })
       .catch(err => {
-        console.error(err);
-        callback(null, 'Could not add item to ES..');
+        callback(null, {
+          statusCode: err.statusCode || 500,
+          message: 'Could not add item to ES..',
+          body: err
+        });
       });
   }
 };
@@ -118,25 +132,27 @@ module.exports.Search = (event, context, callback) => {
     size: event.size,
     from: event.from,
   };
-  console.log(params);
-
   es.search(params)
     .then(res => {
       callback(null, res);
     })
     .catch(err => {
-      callback(null, err);
+      callback(null, {
+        statusCode: err.statusCode || 500,
+        message: 'Could not add item to ES..',
+        body: err
+      });
     });
 };
 
-module.exports.PingEs = (event, context, callback) => {
-  es.ping({
-    requestTimeout: 30000,
-    }, err => {
-      if (err) {
-        console.error('elasticsearch cluster is down!');
-      } else {
-        console.log('All is well');
-      }
-  });
-};
+// module.exports.PingEs = (event, context, callback) => {
+//   es.ping({
+//     requestTimeout: 30000,
+//     }, err => {
+//       if (err) {
+//         console.error('elasticsearch cluster is down!');
+//       } else {
+//         console.log('All is well');
+//       }
+//   });
+// };
