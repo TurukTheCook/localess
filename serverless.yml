@@ -19,7 +19,6 @@ plugins:
   - serverless-plugin-offline-dynamodb-stream
   - serverless-offline
 
-
 custom:
   serverless-offline:
     host: localhost
@@ -38,13 +37,11 @@ custom:
         functions:
           - triggerStream
 
-
 provider:
   name: aws
   runtime: nodejs8.10
   environment:
     region: localhost
-
 
 resources:
   Resources:
@@ -64,7 +61,6 @@ resources:
         StreamSpecification:
           StreamViewType: NEW_IMAGE
 
-
 functions:
   PutItem:
     handler: handler.PutItem
@@ -76,6 +72,8 @@ functions:
     handler: handler.triggerStream
   Search:
     handler: handler.Search
+  PingEs:
+    handler: handler.PingEs
 
 
 
