@@ -7,7 +7,13 @@ const dd = new AWS.DynamoDB.DocumentClient({
   endpoint: 'http://localhost:8000'
 });
 const cs = new AWS.CloudSearchDomain({
+  region: 'localhost',
   endpoint: 'http://localhost:15808',
+  apiVersion: '2013-01-01'
+});
+const cs2 = new AWS.CloudSearchDomain({
+  region: 'localhost',
+  endpoint: 'http://localhost:15808?format=sdk',
   apiVersion: '2013-01-01'
 });
 const TABLE_NAME = "usersTable";
@@ -120,10 +126,13 @@ module.exports.triggerStream = (event, context, callback) => {
 
 module.exports.Search = (event, context, callback) => {
   let params = {
-    query: event
+    query: event,
+    size: 100,
+    start: 0,
   };
-
-  cs.search(params).promise()
+  console.log(params);
+  
+  cs2.search(params).promise()
     .then(result => {
       callback(null, result);
     })
@@ -134,4 +143,4 @@ module.exports.Search = (event, context, callback) => {
         message: 'Could not search'
       });
     });
-}
+};
