@@ -3,7 +3,6 @@
 const uuid = require('uuid');
 const AWS = require('aws-sdk');
 const elasticsearch = require('elasticsearch');
-
 const dd = new AWS.DynamoDB.DocumentClient();
 const es = new elasticsearch.Client({
   host: 'https://search-ddb-streams-es-4xrzlieuxfr4xuvrcuvnv7imuq.eu-west-1.es.amazonaws.com',
@@ -19,51 +18,81 @@ const TABLE_NAME = "UsersTable";
  */
 
 module.exports.PutItem = (event, context, callback) => {
-    let params = {
-      TableName: TABLE_NAME,
-      Item: {
-        userId: uuid.v1(),
-        name: event.name,
-        lastname: event.lastname
-      }
-    };
-    dd.put(params).promise()
-      .then(result => {
-        let response = {
-          statusCode: 200,
-          body: params.Item
-        };
-        callback(null, response);
-      })
-      .catch(error => {
-        callback(null, {
-          statusCode: err.statusCode || 500,
-          message: 'Could not add user to ddb..',
-          body: err
-        });
-      });
-};
-
-module.exports.DeleteItem = (event, context, callback) => {
+  let user = JSON.parse(event.body);
   let params = {
     TableName: TABLE_NAME,
-    Key: {
-      userId: event
+    Item: {
+      userId: uuid.v1(),
+      name: user.name,
+      lastname: user.lastname
     }
   };
-  dd.delete(params).promise()
-    .then(result => {
+  dd.put(params).promise()
+    .then(res => {
       let response = {
         statusCode: 200,
-        message: 'User with id: ' + params.Key.userId + ' deleted successfully'
+        body: JSON.stringify(params.Item)
       };
       callback(null, response);
     })
-    .catch(error => {
+    .catch(err => {
       callback(null, {
         statusCode: err.statusCode || 500,
-        message: 'Could not delete user from ddb..',
-        body: err
+        body: JSON.stringify(err)
+      });
+    });
+};
+
+module.exports.DeleteItem = (event, context, callback) => {
+  let userId = event.pathParameters.userId;
+  let params = {
+    TableName: TABLE_NAME,
+    Key: {
+      userId: userId
+    }
+  };
+  dd.delete(params).promise()
+    .then(res => {
+      let response = {
+        statusCode: 200,
+        body: JSON.stringify({message: 'User with id: ' + params.Key.userId + ' was deleted successfully'})
+      };
+      callback(null, response);
+    })
+    .catch(err => {
+      callback(null, {
+        statusCode: err.statusCode || 500,
+        body: JSON.stringify(err)
+      });
+    });
+};
+
+module.exports.UpdateItem = (event, context, callback) => {
+  let userId = event.pathParameters.userId;
+  let body = JSON.parse(event.body);
+  let params = {
+    TableName: TABLE_NAME,
+    Key: {
+      userId: userId
+    },
+    UpdateExpression: 'set ' + body.paramName + ' = :v',
+    ExpressionAttributeValues: {
+      ':v': body.paramValue
+    },
+    ReturnValues: 'NONE'
+  };
+  dd.update(params).promise()
+    .then(res => {
+      let response = {
+        statusCode: 200,
+        body: JSON.stringify({message: 'User with id: ' + params.Key.userId + ' was updated successfully'})
+      };
+      callback(null, response);
+    })
+    .catch(err => {
+      callback(null, {
+        statusCode: err.statusCode || 500,
+        body: JSON.stringify(err)
       });
     });
 };
@@ -71,13 +100,16 @@ module.exports.DeleteItem = (event, context, callback) => {
 module.exports.Scan = (event, context, callback) => {
   dd.scan({TableName: TABLE_NAME}).promise()
     .then(res => {
-      callback(null, res);
+      let response = {
+        statusCode: 200,
+        body: JSON.stringify(res)
+      };
+      callback(null, response);
     })
     .catch(err => {
       callback(null, {
         statusCode: err.statusCode || 500,
-        message: 'Could not scan ddb..',
-        body: err
+        body: JSON.stringify(err)
       });
     });
 };
@@ -98,13 +130,38 @@ module.exports.triggerStream = (event, context, callback) => {
   if (record.eventName === 'REMOVE') {
     es.delete(params)
       .then(res => {
-        callback(null, res);
+        let response = {
+          statusCode: 200,
+          body: JSON.stringify(res)
+        };
+        callback(null, response);
       })
       .catch(err => {
         callback(null, {
           statusCode: err.statusCode || 500,
-          message: 'Could not remove item from ES..',
-          body: err
+          body: JSON.stringify(err)
+        });
+      });
+  } else if (record.eventName === 'MODIFY') {
+    params.body = {
+      doc: {}
+    };
+    for (let key of Object.keys(image)) {
+      params.body.doc[key] = image[key].S;
+    };
+    params.body.doc.userId = undefined
+    es.update(params)
+      .then(res => {
+        let response = {
+          statusCode: 200,
+          body: JSON.stringify(res)
+        };
+        callback(null, response);
+      })
+      .catch(err => {
+        callback(null, {
+          statusCode: err.statusCode || 500,
+          body: JSON.stringify(err)
         });
       });
   } else {
@@ -114,13 +171,16 @@ module.exports.triggerStream = (event, context, callback) => {
     };
     es.create(params)
       .then(res => {
-        callback(null, res);
+        let response = {
+          statusCode: 200,
+          body: JSON.stringify(res)
+        };
+        callback(null, response);
       })
       .catch(err => {
         callback(null, {
           statusCode: err.statusCode || 500,
-          message: 'Could not add item to ES..',
-          body: err
+          body: JSON.stringify(err)
         });
       });
   }
@@ -128,19 +188,22 @@ module.exports.triggerStream = (event, context, callback) => {
 
 module.exports.Search = (event, context, callback) => {
   let params = {
-    q: event.q,
-    size: event.size || 100,
-    from: event.from || 0,
+    q: event.queryStringParameters.q,
+    size: event.queryStringParameters.size || 100,
+    from: event.queryStringParameters.from || 0,
   };
   es.search(params)
     .then(res => {
-      callback(null, res);
+      let response = {
+        statusCode: 200,
+        body: JSON.stringify(res)
+      };
+      callback(null, response);
     })
     .catch(err => {
       callback(null, {
         statusCode: err.statusCode || 500,
-        message: 'Could not add item to ES..',
-        body: err
+        body: JSON.stringify(err)
       });
     });
 };

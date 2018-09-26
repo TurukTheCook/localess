@@ -23,12 +23,13 @@ provider:
     - Effect: Allow
       Action:
         - dynamodb:PutItem
+        - dynamodb:UpdateItem
         - dynamodb:DeleteItem
         - dynamodb:Scan
         - dynamodb:ListStreams
-        # - dynamodb:DescribeStream
-        # - dynamodb:GetRecords
-        # - dynamodb:GetShardIterator
+        - dynamodb:DescribeStream
+        - dynamodb:GetRecords
+        - dynamodb:GetShardIterator
       Resource:
         - "arn:aws:dynamodb:eu-west-1:468923470896:table/UsersTable"
     - Effect: Allow
@@ -61,10 +62,28 @@ resources:
 functions:
   PutItem:
     handler: handler.PutItem
+    events:
+      - http:
+          path: users
+          method: post
   DeleteItem:
     handler: handler.DeleteItem
+    events:
+      - http:
+          path: users/{userId}
+          method: delete
+  UpdateItem:
+    handler: handler.UpdateItem
+    events:
+      - http:
+          path: users/{userId}
+          method: put
   Scan:
     handler: handler.Scan
+    events:
+      - http:
+          path: users
+          method: get
   triggerStream:
     handler: handler.triggerStream
     events:
@@ -78,6 +97,10 @@ functions:
               - StreamArn
   Search:
     handler: handler.Search
+    events:
+      - http:
+          path: search
+          method: get
   # PingEs:
   #   handler: handler.PingEs
 
