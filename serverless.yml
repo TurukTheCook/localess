@@ -66,24 +66,28 @@ functions:
       - http:
           path: users
           method: post
+          cors: true
   DeleteItem:
     handler: handler.DeleteItem
     events:
       - http:
           path: users/{userId}
           method: delete
+          cors: true
   UpdateItem:
     handler: handler.UpdateItem
     events:
       - http:
           path: users/{userId}
           method: put
+          cors: true
   Scan:
     handler: handler.Scan
     events:
       - http:
           path: users
           method: get
+          cors: true
   triggerStream:
     handler: handler.triggerStream
     events:
@@ -101,6 +105,7 @@ functions:
       - http:
           path: search
           method: get
+          cors: true
   # PingEs:
   #   handler: handler.PingEs
 
