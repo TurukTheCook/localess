@@ -23,7 +23,8 @@ module.exports.PutItem = (event, context, callback) => {
       Item: {
         userId: uuid.v1(),
         name: event.name,
-        lastname: event.lastname
+        lastname: event.lastname,
+        createdAt: new Date().getTime(),
       }
     };
 
@@ -105,13 +106,14 @@ module.exports.triggerStream = (event, context, callback) => {
       name: image.name.S,
       lastname: image.lastname.S, 
     };
+    console.log('record: ', record);
+    console.log('image: ', image);
     es.create(params)
       .then(res => {
-        callback(null, res);
+        console.log(res);
       })
       .catch(err => {
         console.error(err);
-        callback(null, 'Could not add item to ES..');
       });
   }
 };
