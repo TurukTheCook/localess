@@ -3,9 +3,10 @@
 const uuid = require('uuid');
 const AWS = require('aws-sdk');
 const elasticsearch = require('elasticsearch');
+const config = require('./config.js');
 const dd = new AWS.DynamoDB.DocumentClient();
 const es = new elasticsearch.Client({
-  host: 'https://search-ddb-streams-es-4xrzlieuxfr4xuvrcuvnv7imuq.eu-west-1.es.amazonaws.com',
+  host: config.esURL,
   connectionClass: require('http-aws-es'),
   amazonES: {
     credentials: new AWS.EnvironmentCredentials('AWS')
@@ -39,12 +40,14 @@ function createErr (statusCode, message) {
 
 module.exports.PutItem = (event, context, callback) => {
   let user = JSON.parse(event.body);
+  let newDate = new Date().getTime();
   let params = {
     TableName: TABLE_NAME,
     Item: {
       userId: uuid.v1(),
       firstname: user.firstname,
-      lastname: user.lastname
+      lastname: user.lastname,
+      createdAt: newDate,
     }
   };
   dd.put(params).promise()
@@ -116,7 +119,7 @@ module.exports.triggerStream = (event, context, callback) => {
   let image = record.dynamodb.NewImage;
   let params = {
     index: 'users',
-    type: 'user',
+    type: '_doc',
     id: data.id
   };
   if (record.eventName === 'REMOVE') {
@@ -145,7 +148,8 @@ module.exports.triggerStream = (event, context, callback) => {
   } else {
     params.body = {
       firstname: image.firstname.S,
-      lastname: image.lastname.S, 
+      lastname: image.lastname.S,
+      createdAt: Number(image.createdAt.N),
     };
     es.create(params)
       .then(res => {
@@ -158,11 +162,42 @@ module.exports.triggerStream = (event, context, callback) => {
 };
 
 module.exports.Search = (event, context, callback) => {
-  let params = {
-    q: event.queryStringParameters.q,
-    size: event.queryStringParameters.size || 100,
-    from: event.queryStringParameters.from || 0,
+  let queryArray = event.queryStringParameters.q.split(" ");
+  let qq = '';
+  for (let i = 0; i < queryArray.length; i++) {
+    qq += '*'
+    qq += queryArray[i];
+    qq += '*';
+    qq += ' ';
   };
+  qq.trim();
+  if (!queryArray[0]) qq = '*';
+
+  let params = {
+    index: "users",
+    body: {
+      query: {
+        bool: {
+          must: {
+            query_string : {
+              query : qq,
+              default_field: '*'
+              // fields : ["firstname", "lastname"] 
+            }
+          },
+          filter: {
+            term: {
+              lastname: "smith"
+            }
+          }
+        }
+      },
+      size: event.queryStringParameters.size || 100,
+      from: event.queryStringParameters.from || 0,
+      sort: event.queryStringParameters.sort || { "createdAt" : "desc" },
+    }
+  };
+
   es.search(params)
     .then(res => {
       callback(null, createRes(200, res));

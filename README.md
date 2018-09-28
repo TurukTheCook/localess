@@ -1,49 +1,33 @@
-# Serverless DynamoDB + DynamoDB Streams + Nozama Cloudsearch
+# DDB + DDB-Streams + Elasticsearch
 
-## Pre-requisites
-You need to install elasticsearch 1.7.3 and mongodb, then run it
-You'll also need python virtualenv
-
-## Environment setup
-
+## Scripts
+> Before using the script, go to the scripts folder  
 ```bash
-# Setup everything in the directory before launching
-npm run init
-source nozama/bin/activate
-npm run setup
-
-> The command will do this:
-> "init": "npm install && virtualenv nozama"
-> "setup": "pip install nozama-cloudsearch-service && pip install pymongo==2.7.2"
-
-# In the virtualenv
-pserve development.ini
-
-# In another terminal
-export AWS_REGION=localhost
-sls offline start
+cd scripts
 ```
 
-##  Instructions
-
+- ## DDB Seeder
 ```bash
-# To add one test user with unique ID and name 'John', lastname 'Doe'
-sls invoke local -f PutItem -p './user.json'
+node ddb-seeder.js
+```
 
-# To delete the user you can copy his userId and paste it as data:
-sls invoke local -f DeleteItem -d '9522c7c0-bf7a-11e8-a361-c75968a5992c'
+- ## Elasticsearch
 
-# To scan the DDB table
-sls invoke local -f Scan
+> ES create index  
+```bash
+node es-create-index.js
+```
+  
+> ES delete index  
+```bash
+node es-delete-index.js
+```
+  
+> ES index mapping  
 
-# Try searching for the document:
-curl -H "Content-Type: application/json" http://localhost:15808/2013-01-01/search?q=john
-curl -H "Content-Type: application/json" http://localhost:15808/2013-01-01/search?q=somethingnotpresent
-
-# Check what documents are present / removed:
-curl -H "Content-Type: application/json" http://localhost:15808/dev/documents
-> use robo3t or mongo shell to check directly the mongodb
-
-# Empty out all stored content:
-curl -X DELETE -H "Content-Type: application/json" http://localhost:15808/dev/documents
+Before indexing data you'll need to define the fields type by [mapping the index](https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping.html)  
+Else [Dynamic Mapping](https://www.elastic.co/guide/en/elasticsearch/reference/current/dynamic-mapping.html) will take place, you still have to activate numeric detection to detect differents numeric types.  
+You can't delete a mapping, you'll have to delete/create again the index in order to map it. ([source](https://www.elastic.co/guide/en/elasticsearch/reference/6.2/indices-delete-mapping.html))
+```bash
+node es-mapping.js
 ```
