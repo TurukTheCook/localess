@@ -14,7 +14,7 @@ const es = new elasticsearch.Client({
 async function esMap () {
   var result = await es.indices.putMapping({
     index: 'users',
-    type: 'user',
+    type: '_doc',
     body: {
       properties: {
         createdAt: { type: 'date', format: 'epoch_millis' },

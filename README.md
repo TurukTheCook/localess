@@ -18,7 +18,7 @@ It can be done with AWS SDK awsell: [link](https://docs.aws.amazon.com/AWSJavaSc
 
 > For further OPs you can use elasticsearch js client (see [API](https://www.elastic.co/guide/en/elasticsearch/client/javascript-api/current/api-reference.html))
 
-It should looks like something like this:
+Init should looks like something like this:
 ```js
 'use strict';
 
@@ -33,7 +33,27 @@ const es = new elasticsearch.Client({
   }
 });
 ```
+And an async operation like this:
+```js
+async function esMap () {
+  var result = await es.indices.putMapping({
+    index: 'users',
+    type: '_doc',
+    body: {
+      properties: {
+        createdAt: { type: 'date', format: 'epoch_millis' },
+        firstname: { type: 'text' },
+        lastname: { type: 'text' }
+      }
+    }
+  });
+  console.log('ES Mapping done.');
+  console.log(result);
+};
+esMap();
+```
 
+So the steps to set it up:  
 1. Define a template for mapping indices for each type of document: [here](https://www.elastic.co/guide/en/elasticsearch/client/javascript-api/current/api-reference.html#api-indices-puttemplate)
 The body should looks like this:
 ```json
@@ -59,7 +79,8 @@ The body should looks like this:
 }
 ```
 2. Create first indices for each document type indexing operations: [here](https://www.elastic.co/guide/en/elasticsearch/client/javascript-api/current/api-reference.html#api-indices-create)
-3. Create the two aliases per tenant per document type: [here](https://www.elastic.co/guide/en/elasticsearch/client/javascript-api/current/api-reference.html#api-indices-putalias)
+3. Create the two aliases per tenant per document type: [here](https://www.elastic.co/guide/en/elasticsearch/client/javascript-api/current/api-reference.html#api-indices-putalias)  
+One alias for searching and the other for indexing (separate write/read)
 4. Create the index-rollover for each tenant (per document type again): [here](https://www.elastic.co/guide/en/elasticsearch/client/javascript-api/current/api-reference.html#api-indices-rollover)
 
 ## Issues
