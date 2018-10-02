@@ -13,6 +13,71 @@ cd scripts
 - Number of shard per index has to be defined before creation, we can later change this with the indices api (shrink/split) but it is not optimal ([shrink](https://www.elastic.co/guide/en/elasticsearch/reference/6.2/indices-shrink-index.html) & [split](https://www.elastic.co/guide/en/elasticsearch/reference/6.2/indices-split-index.html))
 - We can use aliases to define new indices for a tenant in case it grows large and separate read/write indices for this tenant (with multiple indices for read and one new index for write operations for example)  
 
+> Possible Solution
+```bash
+# 1. Create two aliases per tenant, one for searching, the other for indexing:
+POST /_aliases
+{
+    "actions" : [
+        {
+            "add" : {
+                 "index" : "transactions-*",
+                 "alias" : "tenant_id_search",
+                 "filter" : { "term" : { "tenant_id" : "XXXXXXX" } }
+            }
+        }
+    ]
+}
+POST /_aliases
+{
+    "actions" : [
+        { "add" : { "index" : "transactions-000001", "alias" : "tenant_id_indexing" } }
+    ]
+}  
+
+# 2. Then do an index-rollover to create new write indexes:
+POST /tenant_id_indexing/_rollover 
+{
+  "conditions": {
+    "max_age":   "7d",
+    "max_docs":  1000,
+    "max_size":  "5gb"
+  }
+}
+
+## If the index pointed to by tenant_id_indexing was created 7 or more days ago, or contains 1,000 or more documents, or has an index size at least around 5GB, then the transactions-000002 index is created and the tenant_id_indexing alias is updated to point to transactions-000002.  
+
+## If the name of the existing index ends with - and a number — e.g. logs-000001 — then the name of the new index will follow the same pattern, incrementing the number (logs-000002). The number is zero-padded with a length of 6, regardless of the old index name.
+
+# 3. Define an index template for the new indices created automatically
+PUT _template/template_1
+{
+  "index_patterns": ["tenant*"],
+  "settings": {
+    "number_of_shards": 1
+  },
+  "mappings": {
+    "properties": {
+      "tenant_id": {
+        "type": "keyword"
+      },
+      "transactions_details": {
+        "type": "text"
+      }
+      "created_at": {
+        "type": "date",
+        "format": "epoch_millis"
+      }
+    }
+  }
+}
+```  
+
+Links for possible solution:  
+  - [Indices Aliases](https://www.elastic.co/guide/en/elasticsearch/reference/6.3/indices-aliases.html)
+  - [Indices Rollover](https://www.elastic.co/guide/en/elasticsearch/reference/6.3/indices-rollover-index.html)
+  - [Indices Templates](https://www.elastic.co/guide/en/elasticsearch/reference/6.3/indices-templates.html)
+
 
 ## Documentation
 
