@@ -80,8 +80,57 @@ The body should looks like this:
 ```
 2. Create first indices for each document type indexing operations: [here](https://www.elastic.co/guide/en/elasticsearch/client/javascript-api/current/api-reference.html#api-indices-create)
 3. Create the two aliases per tenant per document type: [here](https://www.elastic.co/guide/en/elasticsearch/client/javascript-api/current/api-reference.html#api-indices-putalias)  
-One alias for searching and the other for indexing (separate write/read)
-4. Create the index-rollover for each tenant (per document type again): [here](https://www.elastic.co/guide/en/elasticsearch/client/javascript-api/current/api-reference.html#api-indices-rollover)
+  ```js
+    // search
+    client.indices.putAlias({
+      index : "transactions-*",
+      name : "tenant_id_search",
+      body : {
+        filter : { "term" : { "tenant_id" : "XXXXXXX" } }
+      }
+    }, function(err, res) {
+      if(err) {
+        console.log(err);
+      }
+      else {
+        console.log('alias created', res);
+      }
+    });
+
+    // indexing
+    client.indices.putAlias({
+      index : "transactions-000001",
+      name : "tenant_id_indexing"
+    }, function(err, res) {
+      if(err) {
+        console.log(err);
+      }
+      else {
+        console.log('alias created', res);
+      }
+    });
+  ```
+One alias for searching and the other for indexing (separate write/read)  
+4. Create the index-rollover for each tenant (per document type again): [here](https://www.elastic.co/guide/en/elasticsearch/client/javascript-api/current/api-reference.html#api-indices-rollover)  
+```js
+  client.indices.rollover({
+    alias : "tenant_id_indexing",
+    body : {
+      conditions : {
+        max_age : "7d",
+        max_docs :  1000,
+        max_size :  "5gb"
+      }
+    }
+  }, function(err, res) {
+    if(err) {
+      console.log(err);
+    }
+    else {
+      console.log('new index created', res);
+    }
+  });
+```
 
 ## Issues
 
@@ -176,7 +225,15 @@ To do that we will need to:
 - be sure that the old index will continue to get new data in order to perform a segments merge and hard delete the old data (see below)
 
 Notes: deleted or updated data is just marked as deleted but still here, it causes longer search (mush be skipped on each search)  
-and reserved storage.
+and reserved storage.  
+
+
+## Comparing solution to [this article](https://www.elastic.co/fr/blog/found-multi-tenancy)
+
+> At this time they discovered that the first time a tenant’s data was accessed, page loads were really slow.  
+They realized that this had to do with warming up caches - which was confirmed by testing out cache warmers  
+
+This problem is not one anymore, as ElasticSearch new versions resolved the issue with cold start. ([source](https://www.elastic.co/guide/en/elasticsearch/reference/6.3/indices-warmers.html))
 
 ## Documentation
 
