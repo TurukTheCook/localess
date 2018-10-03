@@ -2,6 +2,8 @@ var AWS = require("aws-sdk");
 var fs = require('fs');
 var uuid = require('uuid');
 
+AWS.config.region = "eu-west-1";
+
 var docClient = new AWS.DynamoDB.DocumentClient();
 
 console.log("Importing users into DynamoDB. Please wait.");

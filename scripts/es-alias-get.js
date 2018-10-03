@@ -2,7 +2,8 @@
 
 const AWS = require('aws-sdk');
 const elasticsearch = require('elasticsearch');
-const config = require('../config.js');
+const config = require('./../config.js');
+AWS.config.region = "eu-west-1";
 const es = new elasticsearch.Client({
   host: config.esURL,
   connectionClass: require('http-aws-es'),
@@ -11,11 +12,11 @@ const es = new elasticsearch.Client({
   }
 });
 
-async function indexCreate() {
-  var result = await es.indices.create({
-    index: 'users'
+async function aliasGet() {
+  var result = await es.indices.getAlias({
+    name : "users_search, users_indexing",
   });
-  console.log('Index created');
-  console.log(result);
+  console.log('Searching for aliases..');
+  console.log(JSON.stringify(result));
 };
-indexCreate();
+aliasGet();

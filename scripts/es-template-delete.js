@@ -3,6 +3,7 @@
 const AWS = require('aws-sdk');
 const elasticsearch = require('elasticsearch');
 const config = require('../config.js');
+AWS.config.region = "eu-west-1";
 const es = new elasticsearch.Client({
   host: config.esURL,
   connectionClass: require('http-aws-es'),
@@ -11,11 +12,12 @@ const es = new elasticsearch.Client({
   }
 });
 
-async function indexDelete() {
-  var result = await es.indices.delete({
-    index: 'users'
+// DELETE THE TEMPLATE
+async function esDeleteTemplate () {
+  var result = await es.indices.deleteTemplate({
+    name: "users"
   });
-  console.log('Index deleted');
-  console.log(result);
+  console.log('ES deleting template done.');
+  console.log(JSON.stringify(result));
 };
-indexDelete();
+esDeleteTemplate();

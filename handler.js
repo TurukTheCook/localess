@@ -4,6 +4,7 @@ const uuid = require('uuid');
 const AWS = require('aws-sdk');
 const elasticsearch = require('elasticsearch');
 const config = require('./config.js');
+AWS.config.region = "eu-west-1";
 const dd = new AWS.DynamoDB.DocumentClient();
 const es = new elasticsearch.Client({
   host: config.esURL,
@@ -118,9 +119,9 @@ module.exports.triggerStream = (event, context, callback) => {
   let data = {id : record.dynamodb.Keys.userId.S};
   let image = record.dynamodb.NewImage;
   let params = {
-    index: 'users',
+    index: 'users_indexing',
     type: '_doc',
-    id: data.id
+    id: data.id,
   };
   if (record.eventName === 'REMOVE') {
     es.delete(params)
@@ -149,7 +150,8 @@ module.exports.triggerStream = (event, context, callback) => {
     params.body = {
       firstname: image.firstname.S,
       lastname: image.lastname.S,
-      createdAt: Number(image.createdAt.N),
+      userId: data.id,
+      createdAt: image.createdAt.N,
     };
     es.create(params)
       .then(res => {
@@ -174,7 +176,7 @@ module.exports.Search = (event, context, callback) => {
   if (!queryArray[0]) qq = '*';
 
   let params = {
-    index: "users",
+    index: "users_search",
     body: {
       query: {
         bool: {
@@ -185,11 +187,11 @@ module.exports.Search = (event, context, callback) => {
               // fields : ["firstname", "lastname"] 
             }
           },
-          filter: {
-            term: {
-              lastname: "smith"
-            }
-          }
+          // filter: {
+          //   term: {
+          //     lastname: "smith"
+          //   }
+          // }
         }
       },
       size: event.queryStringParameters.size || 100,

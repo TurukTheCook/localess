@@ -151,16 +151,18 @@ PUT _template/template_1
     "number_of_shards": 1
   },
   "mappings": {
-    "properties": {
-      "tenant_id": {
-        "type": "keyword"
-      },
-      "transactions_details": {
-        "type": "text"
-      },
-      "created_at": {
-        "type": "date",
-        "format": "epoch_millis"
+    "_doc": {
+      "properties": {
+        "tenant_id": {
+          "type": "keyword"
+        },
+        "transactions_details": {
+          "type": "text"
+        },
+        "created_at": {
+          "type": "date",
+          "format": "epoch_millis"
+        }
       }
     }
   }
@@ -196,7 +198,8 @@ Init should looks like something like this:
 
 const AWS = require('aws-sdk');
 const elasticsearch = require('elasticsearch'); //elasticsearch javascript client
-const config = require('../config.js'); //simple config file with aws es domain url
+const config = require('./../config.js'); //simple config file with aws es domain url
+AWS.config.region = "eu-west-1"; //setup the aws region
 const es = new elasticsearch.Client({
   host: config.esURL,
   connectionClass: require('http-aws-es'), //allow signed requests to aws
@@ -226,83 +229,96 @@ esMap();
 ```
 
 So the steps to set it up:  
-1. Define a template for mapping indices for each type of document: [here](https://www.elastic.co/guide/en/elasticsearch/client/javascript-api/current/api-reference.html#api-indices-puttemplate)
-The body should looks like this:
-```json
-"body": {
-  "index_patterns": ["transactions-*"],
-  "settings": {
-    "number_of_shards": 1
-  },
-  "mappings": {
-    "properties": {
-      "tenant_id": {
-        "type": "keyword"
-      },
-      "transactions_details": {
-        "type": "text"
-      },
-      "created_at": {
-        "type": "date",
-        "format": "epoch_millis"
+1. Define a template for mapping indices for each type of document: [here](https://www.elastic.co/guide/en/elasticsearch/client/javascript-api/current/api-reference.html#api-indices-puttemplate)  
+  ```js
+  async function esTemplating () {
+    var result = await es.indices.putTemplate({
+      name: "transactions",
+      body: {
+        index_patterns: ["transactions-*"],
+        settings: {
+          number_of_shards: 1
+        },
+        mappings: {
+          _doc: {
+            properties: {
+              tenant_id: {
+                type: "keyword"
+              },
+              transactions_details: {
+                type: "text"
+              },*
+              createdAt: {
+                type: "date",
+                format: "epoch_millis"
+              }
+            }
+          }
+        }
       }
-    }
-  }
-}
+    });
+    console.log('ES templating done.');
+    console.log(result);
+  };
+  esTemplating();
+  ```
+2. Create first indices for each document type indexing operations: [here](https://www.elastic.co/guide/en/elasticsearch/client/javascript-api/current/api-reference.html#api-indices-create) 
+```js
+async function indexCreate() {
+  var result = await es.indices.create({
+    index: 'transactions-000001'
+  });
+  console.log('Index created');
+  console.log(result);
+};
+indexCreate();
 ```
-2. Create first indices for each document type indexing operations: [here](https://www.elastic.co/guide/en/elasticsearch/client/javascript-api/current/api-reference.html#api-indices-create)
 3. Create the two aliases per tenant per document type: [here](https://www.elastic.co/guide/en/elasticsearch/client/javascript-api/current/api-reference.html#api-indices-putalias)  
   ```js
-    // search
-    client.indices.putAlias({
+  // search
+  async function aliasSearchCreate() {
+    var result = await es.indices.putAlias({
       index : "transactions-*",
       name : "tenant_id_search",
       body : {
         filter : { "term" : { "tenant_id" : "XXXXXXX" } }
       }
-    }, function(err, res) {
-      if(err) {
-        console.log(err);
-      }
-      else {
-        console.log('alias created', res);
-      }
     });
+    console.log('Search Alias Created');
+    console.log(result);
+  };
+  aliasSearchCreate();
 
-    // indexing
-    client.indices.putAlias({
+  // indexing
+  async function aliasIndexingCreate() {
+    var result = await es.indices.putAlias({
       index : "transactions-000001",
       name : "tenant_id_indexing"
-    }, function(err, res) {
-      if(err) {
-        console.log(err);
-      }
-      else {
-        console.log('alias created', res);
-      }
     });
+    console.log('Indexing alias created');
+    console.log(result);
+  };
+  aliasIndexingCreate();
   ```
 One alias for searching and the other for indexing (separate write/read)  
 4. Create the index-rollover for each tenant (per document type again): [here](https://www.elastic.co/guide/en/elasticsearch/client/javascript-api/current/api-reference.html#api-indices-rollover)  
-```js
-  client.indices.rollover({
-    alias : "tenant_id_indexing",
-    body : {
-      conditions : {
-        max_age : "7d",
-        max_docs :  1000,
-        max_size :  "5gb"
+  ```js
+  async function rolloverCreate() {
+    var result = await es.indices.rollover({
+      alias : "tenant_id_indexing",
+      body : {
+        conditions : {
+          max_age : "7d",
+          max_docs :  1000,
+          max_size :  "5gb"
+        }
       }
-    }
-  }, function(err, res) {
-    if(err) {
-      console.log(err);
-    }
-    else {
-      console.log('new index created', res);
-    }
-  });
-```
+    });
+    console.log('Rollover Created');
+    console.log(result);
+  };
+  rolloverCreate();
+  ```
 
 ## 6. Scripts  
 
