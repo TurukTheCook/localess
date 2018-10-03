@@ -1,13 +1,64 @@
 # DDB + DDB-Streams + Elasticsearch
 
-## Nomenclature (see Issues for details)
+## Index
+
+1. Comparing solution to [this article](https://www.elastic.co/fr/blog/found-multi-tenancy)  
+2. Nomenclature (see ##Issues for details)  
+3. How to set everything up 
+4. Issues  
+5. Documentation  
+6. Scripts  
+
+## 1. Comparing solution to [this article](https://www.elastic.co/fr/blog/found-multi-tenancy)
+
+> An important criteria of multi-tenant solutions is to ensure that one tenant is not able to observe any data belonging to another tenant.  
+
+- Context:  
+One index per tenant is not a good solution because shards use cpu and memory but if a tenant is too small it is wasted.  
+So we go for all tenants with a shared index, but this mean we need a way to keep data separated for each tenant.  
+
+- Solution:  
+In the search alias, we separate tenants with their ID in a field:  
+```json
+POST /_aliases
+{
+    "actions" : [
+        {
+            "add" : {
+                 "index" : "transactions-*",
+                 "alias" : "tenant_id_search",
+                 "filter" : { "term" : { "tenant_id" : "XXXXXXX" } }
+            }
+        }
+    ]
+}
+```
+
+> At this time they discovered that the first time a tenant’s data was accessed, page loads were really slow.  
+They realized that this had to do with warming up caches - which was confirmed by testing out cache warmers  
+
+- Solution:  
+This problem is not one anymore, as ElasticSearch new versions resolved the issue with cold start. ([source](https://www.elastic.co/guide/en/elasticsearch/reference/6.3/indices-warmers.html))
+
+> They realized, of course, that some tenants are larger than others and wanted to reduce the probability of two large tenants ending up in the same shard and possibly making that shard too large for a single instance. This led them to choose a higher than otherwise necessary number of shards for the indexes.  
+
+- Context:  
+If we choose to allocate multiple shards in one index, large tenants can end up in the same shard because of routing.  
+To avoid that you can allocate more shards or just go with one shard and monitor its size.  
+
+- Solution:  
+We go with one shard and control its size by doing an index-rollover, this API allow to define conditions for an index size  
+and when reached, it creates a new index and ajust the alias pointing to the index.  
+Of course this is for indexing, so for searching we need to have an alias pointing to the multiple indices created by the rollover API. (see #Issues 1. & 2. for more details)  
+
+## 2. Nomenclature (see ##Issues for details)
 
 - 1 shard and 1 replica per index, shard size 30gb
 - If 1 shard and 1 replica per node (instance), this is equivalent to 30*2 * 1.45 = 87gb per data node (see doc: Sizing ES Domain). (AWS ES allows 20 data + 5 master nodes per cluster)
 - 2 aliases per tenant per document type (users, transactions, etc..), one for searching, the other for indexing (rolling-index)
 - Tenant separation is handled by filtering a field with the tenant id directly via the searching alias
 
-## How to set everything up  
+## 3. How to set everything up  
 
 See ## Issues for more informations as why  
 See [here](https://docs.aws.amazon.com/elasticsearch-service/latest/developerguide/aes-supported-es-operations.html) for aws es supported operations
@@ -132,7 +183,7 @@ One alias for searching and the other for indexing (separate write/read)
   });
 ```
 
-## Issues
+## 4. Issues  
 
 > Seperating tenants, multiple per index or one per index.  
 
@@ -227,15 +278,7 @@ To do that we will need to:
 Notes: deleted or updated data is just marked as deleted but still here, it causes longer search (mush be skipped on each search)  
 and reserved storage.  
 
-
-## Comparing solution to [this article](https://www.elastic.co/fr/blog/found-multi-tenancy)
-
-> At this time they discovered that the first time a tenant’s data was accessed, page loads were really slow.  
-They realized that this had to do with warming up caches - which was confirmed by testing out cache warmers  
-
-This problem is not one anymore, as ElasticSearch new versions resolved the issue with cold start. ([source](https://www.elastic.co/guide/en/elasticsearch/reference/6.3/indices-warmers.html))
-
-## Documentation
+## 5. Documentation  
 
 - Basic concepts with definition of index and shards: [here](https://www.elastic.co/guide/en/elasticsearch/reference/current/_basic_concepts.html)  
 - Multi-tenants concepts: [here](https://www.elastic.co/fr/blog/found-multi-tenancy)
@@ -269,7 +312,8 @@ By default, Elasticsearch creates five primary shards and one replica for each i
 
 Allocating multiple shards and replicas is the essence of the design for distributed search capability, providing for high availability and quick access in searches against the documents within an index. The main difference between a primary and a replica shard is that only the primary shard can accept indexing requests. Both replica and primary shards can serve querying requests.
 
-## Scripts
+## 6. Scripts  
+
 > Before using the script, go to the scripts folder, see the scripts folder readme for more commands..  
 ```bash
 cd scripts
