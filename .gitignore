@@ -6,4 +6,6 @@ jspm_packages
 .serverless
 .dynamodb
 
+config.js
+
 TODO
