@@ -11,44 +11,42 @@
 #
 # Happy Coding!
 
-service: localess # NOTE: update this with your service name
-
-
-plugins:
-  - serverless-dynamodb-local
-  - serverless-plugin-offline-dynamodb-stream
-  - serverless-offline
-
-custom:
-  serverless-offline:
-    host: localhost
-    port: 5000
-  dynamodb:
-    start:
-      host: localhost
-      port: 8000
-      inMemory: true
-      migrate: true
-  dynamodbStream:
-    host: localhost
-    port: 8000
-    streams:
-      - table: usersTable
-        functions:
-          - triggerStream
+service: ddb-streams-es # NOTE: update this with your service name
 
 provider:
   name: aws
   runtime: nodejs8.10
-  environment:
-    region: localhost
+  region: eu-west-1
+  stage: dev
+  
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+        - dynamodb:Scan
+        - dynamodb:ListStreams
+        - dynamodb:DescribeStream
+        - dynamodb:GetRecords
+        - dynamodb:GetShardIterator
+      Resource:
+        - "arn:aws:dynamodb:eu-west-1:468923470896:table/UsersTable"
+    - Effect: Allow
+      Action:
+        - es:ESHttpGet
+        - es:ESHttpPost
+        - es:ESHttpPut
+        - es:ESHttpDelete
+      Resource:
+        - "arn:aws:es:eu-west-1:468923470896:domain/ddb-streams-es/*"
 
 resources:
   Resources:
-    usersTable:
+    UsersTable:
       Type: AWS::DynamoDB::Table
       Properties:
-        TableName: usersTable
+        TableName: UsersTable
         AttributeDefinitions:
           - AttributeName: userId
             AttributeType: S
@@ -64,16 +62,54 @@ resources:
 functions:
   PutItem:
     handler: handler.PutItem
+    events:
+      - http:
+          path: users
+          method: post
+          cors: true
   DeleteItem:
     handler: handler.DeleteItem
+    events:
+      - http:
+          path: users/{userId}
+          method: delete
+          cors: true
+  UpdateItem:
+    handler: handler.UpdateItem
+    events:
+      - http:
+          path: users/{userId}
+          method: put
+          cors: true
   Scan:
     handler: handler.Scan
+    events:
+      - http:
+          path: users
+          method: get
+          cors: true
   triggerStream:
     handler: handler.triggerStream
+    events:
+      - stream:
+          type: dynamodb
+          batchSize: 1
+          startingPosition: LATEST
+          arn:
+            Fn::GetAtt:
+              - UsersTable
+              - StreamArn
   Search:
     handler: handler.Search
-  PingEs:
-    handler: handler.PingEs
+    events:
+      - http:
+          path: search
+          method: get
+          cors: true
+  # PingEs:
+  #   handler: handler.PingEs
 
+
+# aws es create-elasticsearch-domain --domain-name ddb-streams-es --elasticsearch-version 6.2 --elasticsearch-cluster-config InstanceType=t2.small.elasticsearch,InstanceCount=1 --ebs-options EBSEnabled=true,VolumeType=standard,VolumeSize=10
 
 
